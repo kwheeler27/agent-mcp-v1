@@ -117,6 +117,17 @@ const SPORT_ENDPOINTS: Record<string, { category: string; league: string }> = {
   nhl: { category: "hockey", league: "nhl" },
   mls: { category: "soccer", league: "usa.1" },
   epl: { category: "soccer", league: "eng.1" },
+  ncaam: { category: "basketball", league: "mens-college-basketball" },
+  ncaaw: { category: "basketball", league: "womens-college-basketball" },
+  ncaaf: { category: "football", league: "college-football" },
+  wnba: { category: "basketball", league: "wnba" },
+  champions: { category: "soccer", league: "uefa.champions" },
+  fifa: { category: "soccer", league: "fifa.world" },
+  nwsl: { category: "soccer", league: "usa.nwsl" },
+  f1: { category: "racing", league: "f1" },
+  pga: { category: "golf", league: "pga" },
+  atp: { category: "tennis", league: "atp" },
+  wta: { category: "tennis", league: "wta" },
 };
 
 server.tool(

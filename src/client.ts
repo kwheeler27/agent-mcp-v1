@@ -57,7 +57,11 @@ async function main() {
   log(`${anthropicTools.length} tools available.`);
   divider();
 
-  // 3. Agent loop
+  // 3. Build system prompt from discovered tools
+  const toolList = anthropicTools.map((t) => `- ${t.name}: ${t.description}`).join("\n");
+  const systemPrompt = `You are a helpful assistant with access to these tools:\n${toolList}\n\nAlways prefer using the specific tool designed for a task rather than a general-purpose tool like fetch_url. For example, use get_sports_scores for sports scores, get_weather for weather, and the file tools for file operations.`;
+
+  // 4. Agent loop
   async function processQuery(userQuery: string): Promise<string> {
     log(`>>> Sending query to Claude: "${userQuery}"`);
 
@@ -70,6 +74,7 @@ async function main() {
       const response = await anthropic.messages.create({
         model: "claude-sonnet-4-5-20250929",
         max_tokens: 4096,
+        system: systemPrompt,
         tools: anthropicTools,
         messages,
       });
@@ -137,6 +142,7 @@ async function main() {
   console.log('  • "Read the contents of example.txt"');
   console.log('  • "What files are in my workspace?"');
   console.log('  • "What\'s the weather in London?"');
+  console.log('  • "What are today\'s NBA scores?"');
   console.log('  • "Create a file called notes.txt with hello world, then read it back"');
   console.log('  • "What is 2 + 2?"  (no tools needed)');
   console.log('  Type "quit" or "exit" to stop.\n');
