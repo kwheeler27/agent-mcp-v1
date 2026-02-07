@@ -1,0 +1,3 @@
+Hello from the MCP workspace!
+This file demonstrates the read_file and write_file tools.
+Try asking the agent to read this file or create new ones.

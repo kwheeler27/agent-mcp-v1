@@ -1,0 +1,123 @@
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
+import { promises as fs } from "node:fs";
+import path from "node:path";
+
+// ── Logging helper (always stderr – stdout is the MCP JSON-RPC channel) ──
+const log = (...args: unknown[]) => console.error("[server]", ...args);
+
+// ── Workspace sandbox ──
+const WORKSPACE_DIR = path.resolve(process.cwd(), "workspace");
+
+/** Resolve a user-supplied path and ensure it stays inside WORKSPACE_DIR. */
+function safePath(userPath: string): string {
+  const resolved = path.resolve(WORKSPACE_DIR, userPath);
+  if (!resolved.startsWith(WORKSPACE_DIR + path.sep) && resolved !== WORKSPACE_DIR) {
+    throw new Error(`Path escapes workspace: ${userPath}`);
+  }
+  return resolved;
+}
+
+// ── Create MCP Server ──
+const server = new McpServer({
+  name: "edu-mcp-server",
+  version: "1.0.0",
+});
+
+// ── Tool: read_file ──
+server.tool(
+  "read_file",
+  "Read the contents of a file inside the workspace directory.",
+  { path: z.string().describe("Relative path inside workspace") },
+  async ({ path: filePath }) => {
+    log(`>>> read_file  path="${filePath}"`);
+    const resolved = safePath(filePath);
+    const content = await fs.readFile(resolved, "utf-8");
+    log(`<<< read_file  ${content.length} chars`);
+    return { content: [{ type: "text", text: content }] };
+  },
+);
+
+// ── Tool: write_file ──
+server.tool(
+  "write_file",
+  "Write content to a file inside the workspace directory. Creates parent directories if needed.",
+  {
+    path: z.string().describe("Relative path inside workspace"),
+    content: z.string().describe("Content to write"),
+  },
+  async ({ path: filePath, content }) => {
+    log(`>>> write_file  path="${filePath}" (${content.length} chars)`);
+    const resolved = safePath(filePath);
+    await fs.mkdir(path.dirname(resolved), { recursive: true });
+    await fs.writeFile(resolved, content, "utf-8");
+    log(`<<< write_file  OK`);
+    return { content: [{ type: "text", text: `Wrote ${content.length} chars to ${filePath}` }] };
+  },
+);
+
+// ── Tool: list_directory ──
+server.tool(
+  "list_directory",
+  "List files and directories inside the workspace directory.",
+  { path: z.string().optional().describe("Relative sub-path (default: root of workspace)") },
+  async ({ path: dirPath }) => {
+    const rel = dirPath ?? ".";
+    log(`>>> list_directory  path="${rel}"`);
+    const resolved = safePath(rel);
+    const entries = await fs.readdir(resolved, { withFileTypes: true });
+    const listing = entries.map((e) => `${e.isDirectory() ? "[dir]" : "[file]"} ${e.name}`).join("\n");
+    log(`<<< list_directory  ${entries.length} entries`);
+    return { content: [{ type: "text", text: listing || "(empty directory)" }] };
+  },
+);
+
+// ── Tool: fetch_url ──
+server.tool(
+  "fetch_url",
+  "Fetch the content of a URL and return the response body (truncated to 5000 chars).",
+  { url: z.string().url().describe("URL to fetch") },
+  async ({ url }) => {
+    log(`>>> fetch_url  url="${url}"`);
+    const res = await fetch(url);
+    if (!res.ok) {
+      const msg = `HTTP ${res.status} ${res.statusText}`;
+      log(`<<< fetch_url  ERROR: ${msg}`);
+      return { content: [{ type: "text", text: msg }], isError: true };
+    }
+    let body = await res.text();
+    const full = body.length;
+    if (body.length > 5000) body = body.slice(0, 5000) + "\n... (truncated)";
+    log(`<<< fetch_url  ${full} chars (${body.length} returned)`);
+    return { content: [{ type: "text", text: body }] };
+  },
+);
+
+// ── Tool: get_weather ──
+server.tool(
+  "get_weather",
+  "Get the current weather for a city using wttr.in (no API key needed).",
+  { city: z.string().describe("City name, e.g. 'London'") },
+  async ({ city }) => {
+    log(`>>> get_weather  city="${city}"`);
+    const url = `https://wttr.in/${encodeURIComponent(city)}?format=3`;
+    const res = await fetch(url);
+    const text = await res.text();
+    log(`<<< get_weather  "${text.trim()}"`);
+    return { content: [{ type: "text", text: text.trim() }] };
+  },
+);
+
+// ── Start ──
+async function main() {
+  log("Starting MCP server (stdio transport)…");
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  log("Server connected – waiting for requests.");
+}
+
+main().catch((err) => {
+  log("Fatal error:", err);
+  process.exit(1);
+});
