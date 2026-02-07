@@ -109,6 +109,83 @@ server.tool(
   },
 );
 
+// ── Tool: get_sports_scores ──
+const SPORT_ENDPOINTS: Record<string, { category: string; league: string }> = {
+  nfl: { category: "football", league: "nfl" },
+  nba: { category: "basketball", league: "nba" },
+  mlb: { category: "baseball", league: "mlb" },
+  nhl: { category: "hockey", league: "nhl" },
+  mls: { category: "soccer", league: "usa.1" },
+  epl: { category: "soccer", league: "eng.1" },
+};
+
+server.tool(
+  "get_sports_scores",
+  `Get recent/live sports scores from ESPN. Supported leagues: ${Object.keys(SPORT_ENDPOINTS).join(", ")}.`,
+  {
+    league: z
+      .string()
+      .describe(`League abbreviation: ${Object.keys(SPORT_ENDPOINTS).join(", ")}`),
+  },
+  async ({ league }) => {
+    const key = league.toLowerCase();
+    log(`>>> get_sports_scores  league="${key}"`);
+
+    const sport = SPORT_ENDPOINTS[key];
+    if (!sport) {
+      const msg = `Unknown league "${league}". Supported: ${Object.keys(SPORT_ENDPOINTS).join(", ")}`;
+      log(`<<< get_sports_scores  ERROR: ${msg}`);
+      return { content: [{ type: "text", text: msg }], isError: true };
+    }
+
+    const url = `https://site.api.espn.com/apis/site/v2/sports/${sport.category}/${sport.league}/scoreboard`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      const msg = `ESPN API error: HTTP ${res.status}`;
+      log(`<<< get_sports_scores  ERROR: ${msg}`);
+      return { content: [{ type: "text", text: msg }], isError: true };
+    }
+
+    const data = (await res.json()) as {
+      leagues?: Array<{ name?: string }>;
+      events?: Array<{
+        name?: string;
+        date?: string;
+        status?: { type?: { description?: string } };
+        competitions?: Array<{
+          competitors?: Array<{
+            team?: { displayName?: string };
+            score?: string;
+            winner?: boolean;
+          }>;
+        }>;
+      }>;
+    };
+
+    const events = data.events ?? [];
+    if (events.length === 0) {
+      const msg = `No games found for ${key.toUpperCase()} right now.`;
+      log(`<<< get_sports_scores  ${msg}`);
+      return { content: [{ type: "text", text: msg }] };
+    }
+
+    const lines = events.map((ev) => {
+      const comp = ev.competitions?.[0];
+      const teams = comp?.competitors ?? [];
+      const status = ev.status?.type?.description ?? "Unknown";
+      const matchup = teams
+        .map((t) => `${t.team?.displayName ?? "?"} ${t.score ?? "-"}`)
+        .join("  vs  ");
+      return `${matchup}  (${status})`;
+    });
+
+    const header = data.leagues?.[0]?.name ?? key.toUpperCase();
+    const text = `${header} Scores:\n${lines.join("\n")}`;
+    log(`<<< get_sports_scores  ${events.length} games`);
+    return { content: [{ type: "text", text }] };
+  },
+);
+
 // ── Start ──
 async function main() {
   log("Starting MCP server (stdio transport)…");
