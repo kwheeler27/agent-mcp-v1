@@ -12,7 +12,10 @@ const divider = () => console.log("─".repeat(60));
 
 // ── Setup paths ──
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SERVER_PATH = path.join(__dirname, "server.js");
+const isDev = process.env.DEV === "1";
+const SERVER_PATH = isDev
+  ? path.join(__dirname, "server.ts")
+  : path.join(__dirname, "server.js");
 
 // ── Anthropic client ──
 const anthropic = new Anthropic();
@@ -33,8 +36,8 @@ async function main() {
   // 1. Spawn the MCP server and connect
   log("Spawning MCP server…");
   const transport = new StdioClientTransport({
-    command: "node",
-    args: [SERVER_PATH],
+    command: isDev ? "npx" : "node",
+    args: isDev ? ["tsx", SERVER_PATH] : [SERVER_PATH],
   });
 
   const mcpClient = new Client({ name: "edu-mcp-client", version: "1.0.0" });

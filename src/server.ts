@@ -3,12 +3,21 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import Database from "better-sqlite3";
+import { seedDatabase } from "./seed.js";
 
 // ── Logging helper (always stderr – stdout is the MCP JSON-RPC channel) ──
 const log = (...args: unknown[]) => console.error("[server]", ...args);
 
 // ── Workspace sandbox ──
 const WORKSPACE_DIR = path.resolve(process.cwd(), "workspace");
+
+// ── Database setup ──
+const DB_PATH = path.join(WORKSPACE_DIR, "data.db");
+const db = new Database(DB_PATH);
+db.pragma("journal_mode = WAL");
+seedDatabase(db);
+log("Database ready at", DB_PATH);
 
 /** Resolve a user-supplied path and ensure it stays inside WORKSPACE_DIR. */
 function safePath(userPath: string): string {
@@ -194,6 +203,38 @@ server.tool(
     const text = `${header} Scores:\n${lines.join("\n")}`;
     log(`<<< get_sports_scores  ${events.length} games`);
     return { content: [{ type: "text", text }] };
+  },
+);
+
+// ── Tool: query_database ──
+server.tool(
+  "query_database",
+  "Run a SQL query against the workspace SQLite database. Supports SELECT, INSERT, UPDATE, DELETE, CREATE TABLE, etc.",
+  { sql: z.string().describe("SQL statement to execute") },
+  async ({ sql }) => {
+    log(`>>> query_database  sql="${sql}"`);
+    try {
+      const trimmed = sql.trimStart().toUpperCase();
+      const isRead = trimmed.startsWith("SELECT") || trimmed.startsWith("PRAGMA") || trimmed.startsWith("EXPLAIN");
+
+      if (isRead) {
+        const rows = db.prepare(sql).all();
+        log(`<<< query_database  ${rows.length} rows`);
+        return { content: [{ type: "text", text: JSON.stringify(rows, null, 2) }] };
+      } else {
+        const result = db.prepare(sql).run();
+        log(`<<< query_database  changes=${result.changes} lastInsertRowid=${result.lastInsertRowid}`);
+        return {
+          content: [
+            { type: "text", text: JSON.stringify({ changes: result.changes, lastInsertRowid: result.lastInsertRowid }) },
+          ],
+        };
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      log(`<<< query_database  ERROR: ${msg}`);
+      return { content: [{ type: "text", text: `SQL Error: ${msg}` }], isError: true };
+    }
   },
 );
 

@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node build/client.js",
-    "start:server": "node build/server.js"
+    "start:server": "node build/server.js",
+    "dev": "DEV=1 npx tsx src/client.ts"
   },
   "keywords": [
     "mcp",
@@ -17,11 +18,14 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.73.0",
     "@modelcontextprotocol/sdk": "^1.26.0",
+    "better-sqlite3": "^12.6.2",
     "dotenv": "^17.2.4",
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.2.1",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   }
 }
