@@ -294,20 +294,36 @@ server.tool(
 // ── Tool: query_database ──
 server.tool(
   "query_database",
-  "Run a SQL query against the workspace SQLite database. Supports SELECT, INSERT, UPDATE, DELETE, CREATE TABLE, etc.",
-  { sql: z.string().describe("SQL statement to execute") },
-  async ({ sql }) => {
-    log(`>>> query_database  sql="${sql}"`);
+  "Run a SQL query against the workspace SQLite database. Supports SELECT, INSERT, UPDATE, DELETE, CREATE TABLE, etc. Use params for parameterized queries to prevent SQL injection.",
+  {
+    sql: z.string().describe("SQL statement to execute"),
+    params: z
+      .array(z.union([z.string(), z.number(), z.null()]))
+      .optional()
+      .describe("Optional bind parameters for the query"),
+  },
+  async ({ sql, params }) => {
+    log(`>>> query_database  sql="${sql}" params=${JSON.stringify(params)}`);
     try {
+      // Multi-statement detection: if there's a `;` before the end, use db.exec
+      const hasMultiple = sql.trimEnd().replace(/;$/, "").includes(";");
+      if (hasMultiple) {
+        log(`    multi-statement detected – using db.exec`);
+        db.exec(sql);
+        log(`<<< query_database  executed`);
+        return { content: [{ type: "text", text: JSON.stringify({ executed: true }) }] };
+      }
+
       const trimmed = sql.trimStart().toUpperCase();
       const isRead = trimmed.startsWith("SELECT") || trimmed.startsWith("PRAGMA") || trimmed.startsWith("EXPLAIN");
+      const bindParams = params ?? [];
 
       if (isRead) {
-        const rows = db.prepare(sql).all();
+        const rows = db.prepare(sql).all(...bindParams);
         log(`<<< query_database  ${rows.length} rows`);
         return { content: [{ type: "text", text: JSON.stringify(rows, null, 2) }] };
       } else {
-        const result = db.prepare(sql).run();
+        const result = db.prepare(sql).run(...bindParams);
         log(`<<< query_database  changes=${result.changes} lastInsertRowid=${result.lastInsertRowid}`);
         return {
           content: [
