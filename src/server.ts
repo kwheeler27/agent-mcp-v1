@@ -3,7 +3,12 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { randomUUID } from "node:crypto";
 import Database from "better-sqlite3";
+
+const execFileAsync = promisify(execFile);
 import { seedDatabase } from "./seed.js";
 
 // ── Logging helper (always stderr – stdout is the MCP JSON-RPC channel) ──
@@ -203,6 +208,35 @@ server.tool(
     const text = `${header} Scores:\n${lines.join("\n")}`;
     log(`<<< get_sports_scores  ${events.length} games`);
     return { content: [{ type: "text", text }] };
+  },
+);
+
+// ── Tool: run_code ──
+server.tool(
+  "run_code",
+  "Run a Python script and return its output (stdout + stderr). Execution is time-limited to 10 seconds.",
+  { code: z.string().describe("Python code to execute") },
+  async ({ code }) => {
+    log(`>>> run_code  (${code.length} chars)`);
+    const tmpDir = path.join(WORKSPACE_DIR, ".tmp");
+    await fs.mkdir(tmpDir, { recursive: true });
+    const tmpFile = path.join(tmpDir, `${randomUUID()}.py`);
+    try {
+      await fs.writeFile(tmpFile, code, "utf-8");
+      const { stdout, stderr } = await execFileAsync("python3", [tmpFile], {
+        timeout: 10_000,
+        cwd: WORKSPACE_DIR,
+      });
+      const output = (stdout + stderr).trim();
+      log(`<<< run_code  OK (${output.length} chars)`);
+      return { content: [{ type: "text", text: output || "(no output)" }] };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      log(`<<< run_code  ERROR: ${msg}`);
+      return { content: [{ type: "text", text: `Execution error: ${msg}` }], isError: true };
+    } finally {
+      await fs.unlink(tmpFile).catch(() => {});
+    }
   },
 );
 
