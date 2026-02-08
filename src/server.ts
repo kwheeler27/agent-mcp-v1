@@ -240,6 +240,57 @@ server.tool(
   },
 );
 
+// ── Tool: web_search ──
+server.tool(
+  "web_search",
+  "Search the web using Brave Search and return top results.",
+  {
+    query: z.string().describe("Search query"),
+    count: z.number().optional().default(5).describe("Number of results (default 5)"),
+  },
+  async ({ query, count }) => {
+    log(`>>> web_search  query="${query}" count=${count}`);
+    const apiKey = process.env.BRAVE_API_KEY;
+    if (!apiKey) {
+      const msg = "BRAVE_API_KEY is not set in environment variables.";
+      log(`<<< web_search  ERROR: ${msg}`);
+      return { content: [{ type: "text", text: msg }], isError: true };
+    }
+
+    const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=${count}`;
+    const res = await fetch(url, {
+      headers: {
+        "X-Subscription-Token": apiKey,
+        "Accept": "application/json",
+      },
+    });
+
+    if (!res.ok) {
+      const msg = `Brave Search API error: HTTP ${res.status} ${res.statusText}`;
+      log(`<<< web_search  ERROR: ${msg}`);
+      return { content: [{ type: "text", text: msg }], isError: true };
+    }
+
+    const data = (await res.json()) as {
+      web?: { results?: Array<{ title?: string; url?: string; description?: string }> };
+    };
+
+    const results = data.web?.results ?? [];
+    if (results.length === 0) {
+      const msg = `No results found for "${query}".`;
+      log(`<<< web_search  ${msg}`);
+      return { content: [{ type: "text", text: msg }] };
+    }
+
+    const formatted = results
+      .map((r, i) => `${i + 1}. ${r.title ?? "(no title)"}\n   ${r.url ?? ""}\n   ${r.description ?? ""}`)
+      .join("\n\n");
+
+    log(`<<< web_search  ${results.length} results`);
+    return { content: [{ type: "text", text: formatted }] };
+  },
+);
+
 // ── Tool: query_database ──
 server.tool(
   "query_database",
