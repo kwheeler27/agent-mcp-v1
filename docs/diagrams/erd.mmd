@@ -1,0 +1,17 @@
+---
+title: agent-mcp-v1 — executable seed schema
+---
+erDiagram
+  books {
+    INTEGER id PK "Identifier for this book record. (AUTOINCREMENT). | Required: Yes"
+    TEXT title "Display title of this record. | Required: Yes"
+    TEXT author "Author of the book. | Required: Yes"
+    INTEGER year "Publication year recorded for the book. | Required: No"
+    TEXT genre "Genre assigned to the book. | Required: No"
+  }
+  users {
+    INTEGER id PK "Identifier for this user record. (AUTOINCREMENT). | Required: Yes"
+    TEXT name "Human-readable name of this record. | Required: Yes"
+    TEXT email "Email address for this person or account. (not unique). | Required: Yes"
+    TEXT favorite_genre "User's preferred book genre. | Required: No"
+  }

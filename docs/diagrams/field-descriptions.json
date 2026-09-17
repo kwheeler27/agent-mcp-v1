@@ -1,0 +1,42 @@
+{
+  "books": {
+    "id": {
+      "description": "Identifier for this book record. (AUTOINCREMENT).",
+      "required": "Yes"
+    },
+    "title": {
+      "description": "Display title of this record.",
+      "required": "Yes"
+    },
+    "author": {
+      "description": "Author of the book.",
+      "required": "Yes"
+    },
+    "year": {
+      "description": "Publication year recorded for the book.",
+      "required": "No"
+    },
+    "genre": {
+      "description": "Genre assigned to the book.",
+      "required": "No"
+    }
+  },
+  "users": {
+    "id": {
+      "description": "Identifier for this user record. (AUTOINCREMENT).",
+      "required": "Yes"
+    },
+    "name": {
+      "description": "Human-readable name of this record.",
+      "required": "Yes"
+    },
+    "email": {
+      "description": "Email address for this person or account. (not unique).",
+      "required": "Yes"
+    },
+    "favorite_genre": {
+      "description": "User's preferred book genre.",
+      "required": "No"
+    }
+  }
+}
