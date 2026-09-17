@@ -566,3 +566,7 @@ The `isError: true` flag is forwarded through MCP to the client, which passes
 it as `is_error` on the `tool_result` message to Claude. This lets Claude
 understand the tool failed and respond accordingly (retry, explain the error,
 or try an alternative approach).
+
+## Maintained Mermaid views
+
+See [architecture](diagrams/architecture.mmd) and [seed-schema ERD](diagrams/erd.mmd). The genre/favorite_genre join above is an example equality predicate only; the executable seed declares no foreign key. Runtime query_database calls can change schema, so this documents source definitions rather than inspecting workspace/data.db.

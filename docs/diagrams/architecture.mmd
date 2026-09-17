@@ -1,0 +1,12 @@
+---
+title: agent-mcp-v1 — implemented educational local client and server
+---
+flowchart LR
+  user["Terminal REPL"] --> client["src/client.ts: agent loop"]
+  client -->|messages and tool results| anthropic["Anthropic API"]
+  client -->|child process; MCP stdio| server["src/server.ts: nine tools"]
+  server -->|read/write/list via safePath| files["workspace files"]
+  server -->|query_database; better-sqlite3| db[(workspace/data.db)]
+  seed["src/seed.ts"] -->|create-if-absent and initial samples| db
+  server -->|execFile| python["Temporary Python process"]
+  server -->|HTTP| http["Brave / wttr.in / ESPN / arbitrary URL"]

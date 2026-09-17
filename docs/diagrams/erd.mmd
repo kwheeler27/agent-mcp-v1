@@ -1,0 +1,17 @@
+---
+title: agent-mcp-v1 — executable seed schema
+---
+erDiagram
+  books {
+    INTEGER id PK "required; AUTOINCREMENT"
+    TEXT title "required"
+    TEXT author "required"
+    INTEGER year "nullable"
+    TEXT genre "nullable"
+  }
+  users {
+    INTEGER id PK "required; AUTOINCREMENT"
+    TEXT name "required"
+    TEXT email "required; not unique"
+    TEXT favorite_genre "nullable"
+  }
