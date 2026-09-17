@@ -1,3 +1,4 @@
+/// <reference lib="dom" />
 /** Render Mermaid relationships with five-column entity tables. No schema/database access.
  * Uses an existing Mermaid CLI installation; see docs/diagrams/README.md.
  */
@@ -26,7 +27,7 @@ try {
     const input = source.split('\n').flatMap(line => {
       const start = line.match(/^\s*(\w+)(?:\["([^"]+)"\])?\s*\{\s*$/);
       if (start) {
-        table = { id: start[1], title: start[2] || start[1], rows: [['Field', 'Description', 'Type', 'PK/FK', 'Required']] };
+        table = { id: start[1]!, title: start[2] || start[1]!, rows: [['Field', 'Description', 'Type', 'PK/FK', 'Required']] };
         tables.push(table);
         // This temporary row reserves header height; it is never written to the source.
         return [line, '    Type Field PK, FK "Description | Required: Unspecified MMMMMMMMMMMM"'];
@@ -35,7 +36,7 @@ try {
       if (!table || !line.trim() || line.trim().startsWith('%%')) return [line];
       const f = line.match(/^\s*(\S+)\s+(\w+)(?:\s+((?:PK|FK|UK)(?:,\s*(?:PK|FK|UK))*))?\s+"(.*) \| Required: (Yes|No|Conditional|Unspecified)"\s*$/);
       if (!f) throw new Error(`Unsupported annotated field: ${line}`);
-      table.rows.push([f[2], f[4], f[1], f[3] || (/keys and nullability unspecified/.test(f[4]) ? 'Unspecified' : '—'), f[5]]);
+      table.rows.push([f[2]!, f[4]!, f[1]!, f[3] || (/keys and nullability unspecified/.test(f[4]!) ? 'Unspecified' : '—'), f[5]!]);
       // Extra comment width leaves room for the fifth column and its header.
       return [line.replace(/"\s*$/, ' MMMMMMMMMMMM"')];
     }).join('\n');
@@ -55,13 +56,13 @@ try {
         const measure = (s: string) => context.measureText(s).width;
         let fields = 0;
         for (const table of tables) {
-          const node = [...svg.querySelectorAll<SVGGElement>('g.node')].find(n => n.id.includes(`entity-${table.id}-`));
+          const node = Array.from(svg.querySelectorAll<SVGGElement>('g.node')).find(n => n.id.includes(`entity-${table.id}-`));
           if (!node) throw new Error(`Rendered entity missing: ${table.id}`);
           const box = node.querySelector<SVGGraphicsElement>('.outer-path')?.getBBox() ?? node.getBBox();
-          const widths = table.rows[0].map((_, i) => Math.ceil(Math.max(...table.rows.map(row => measure(row[i]))) + 24));
+          const widths = table.rows[0]!.map((_, i) => Math.ceil(Math.max(...table.rows.map(row => measure(row[i]!))) + 24));
           const needed = widths.reduce((a, b) => a + b, 0);
           if (needed > box.width + 1) throw new Error(`Table too narrow: ${table.id}: ${needed} > ${box.width}`);
-          widths[1] += box.width - needed;
+          widths[1] = widths[1]! + box.width - needed;
           const rowHeight = box.height / (table.rows.length + 1);
           if (rowHeight < 24) throw new Error(`Rows too short: ${table.id}`);
           node.replaceChildren();
@@ -81,9 +82,9 @@ try {
             const y = box.y + (index + 1) * rowHeight;
             let x = box.x;
             row.forEach((value, col) => {
-              rect(x, y, widths[col], rowHeight, index === 0 ? '#edf2f6' : index % 2 ? '#ffffff' : '#f7f9fb');
+              rect(x, y, widths[col]!, rowHeight, index === 0 ? '#edf2f6' : index % 2 ? '#ffffff' : '#f7f9fb');
               text(x + 12, y + rowHeight / 2, value, index === 0);
-              x += widths[col];
+              x += widths[col]!;
             });
           });
           fields += table.rows.length - 1;

@@ -21,7 +21,7 @@ export function annotateErd(source: string): string {
     if (!entity || !line.trim() || line.trim().startsWith('%%')) return line;
     const field = line.match(/^(\s*)(\S+)\s+(\w+)(?:\s+((?:PK|FK|UK)(?:,\s*(?:PK|FK|UK))*))?(?:\s+"([^"]*)")?\s*$/);
     if (!field) throw new Error(`Unsupported ERD field: ${line}`);
-    const value = fieldDescription(entity, field[3]);
+    const value = fieldDescription(entity, field[3]!);
     // Explicit source nullability wins, and metadata drift fails instead of silently changing it.
     const old = field[5] ?? '';
     if (/\bPK\b/.test(field[4] ?? '') && value.required !== 'Yes') throw new Error(`Primary key must be required: ${entity}.${field[3]}`);
@@ -34,7 +34,7 @@ export function annotateErd(source: string): string {
 // Standalone refresh/check for hand-maintained Mermaid sources.
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const [mode, ...files] = process.argv.slice(2);
-  if (!['--write', '--check'].includes(mode) || !files.length) throw new Error('Use --write or --check followed by ERD paths.');
+  if (!['--write', '--check'].includes(mode ?? '') || !files.length) throw new Error('Use --write or --check followed by ERD paths.');
   for (const file of files) {
     const path = resolve(root, file);
     const source = readFileSync(path, 'utf8');
